@@ -10,3 +10,5 @@ print(f"Hi ! This software run on  : {meshtastic.version.version("meshtastic")} 
 mesh_interface_instance = meshtastic.mesh_interface.meshtastic.serial_interface.SerialInterface()
 
 print(mesh_interface_instance.getLongName())
+
+print(mesh_interface_instance.showInfo())
