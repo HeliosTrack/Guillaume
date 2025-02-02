@@ -99,7 +99,6 @@ class App(customtkinter.CTk):
         self.map_widget.set_tile_server("https://mt0.google.com/vt/lyrs=s&hl=en&x={x}&y={y}&z={z}&s=Ga", max_zoom=22)
         self.appearance_mode_optionemenu.set("Dark")
 
-        # Récupération des données des CanSats via API_meshtastic
         nodes = API_meshtastic.get_device()
 
         if nodes:
@@ -177,9 +176,4 @@ class App(customtkinter.CTk):
 if __name__ == "__main__":
     app = App()
     app.start()
-
-
-
-if __name__ == "__main__":
-    app = App()
-    app.start()
+    API_meshtastic.close_interface()
