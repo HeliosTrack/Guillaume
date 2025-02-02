@@ -33,17 +33,15 @@ def get_temp_humidity_pression(node_id):
     
     print("Captured Output:", output)
     return {"temp": output[55:60], "humidity": output[81:89], "pression": output[112:121]}
-# interface.sendText("Test message", destinationId="!435a7150")
+
+def get_device(debug=False):
+    nodes = interface.nodes
+    for node_id, node_info in nodes.items():
+        if debug:
+            print(f"Node ID: {node_id}")
+            print(json.dumps(node_info, indent=2))
+            print("-" * 40)
+    return nodes
 
 
-nodes = interface.nodes  # Il s'agit d'un dictionnaire : clés = identifiants des nœuds, valeurs = infos associées
-
-# Affichage formaté de chaque nœud
-for node_id, node_info in nodes.items():
-    print(f"Node ID: {node_id}")
-    print(json.dumps(node_info, indent=2))
-    print("-" * 40)
-    print(get_temp_humidity_pression(str(node_id)))
-    print("-" * 40)
-
-interface.close()
+def close_interface(): interface.close()

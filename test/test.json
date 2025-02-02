@@ -1,0 +1,16 @@
+{'num': 1130000852, 
+'user': {'id': '!435a71d4', 
+        'longName': 'Meshtastic 71d4', 
+        'shortName': '71d4', 
+        'macaddr': 'SMpDWnHU', 
+        'hwModel': 'LILYGO_TBEAM_S3_CORE', 
+        'publicKey': 'Su8Kf/++cOBKMb6XxeYgQyDfMwZg5bSH4Kn4u64lGVA='}, 
+
+'position': {'time': 1738516831},
+'lastHeard': 1738516831, 
+'deviceMetrics': {'batteryLevel': 101, 
+                'voltage': -0.001, 
+                'channelUtilization': 0.16, 
+                'airUtilTx': 0.08347222, 
+                'uptimeSeconds': 10134}, 
+                'isFavorite': True}
