@@ -1,8 +1,9 @@
 import customtkinter
 from tkintermapview import TkinterMapView
 import API_meshtastic
-import time, os, threading
-
+import os, threading
+from json import loads
+from time import time
 customtkinter.set_default_color_theme("blue")
 
 
@@ -38,10 +39,9 @@ class ScrollableLabelButtonFrame(customtkinter.CTkScrollableFrame):
 
 class DataRecorder:
     def __init__(self):
-        self.recording = {}  # Stocke l'état d'enregistrement des nœuds
-        self.threads = {}  # Stocke les threads d'enregistrement
-        self.stop_events = {}  # Drapeaux pour arrêter proprement les threads
-
+        self.recording = {}
+        self.threads = {}
+        self.stop_events = {}
     def record(self, node_id):
         if node_id in self.threads and self.threads[node_id].is_alive():
             print(f"Un enregistrement est déjà en cours pour le nœud {node_id}.")
@@ -49,47 +49,41 @@ class DataRecorder:
 
         print(f"Début de l'enregistrement pour le nœud {node_id}...")
 
-        self.stop_events[node_id] = threading.Event()  # Création du drapeau d'arrêt
+        self.stop_events[node_id] = threading.Event()
 
         thread = threading.Thread(target=self._record_data, args=(node_id,), daemon=True)
         self.threads[node_id] = thread
         thread.start()
 
     def _record_data(self, node_id):
-        file_path = f"data_{node_id}.csv"
+        file_path = f"data/data_{node_id}.csv"
 
-        # Vérifier si le fichier existe, sinon créer l'en-tête
         if not os.path.exists(file_path):
             with open(file_path, "w") as file:
-                file.write("temp,humidity,pression\n")
+                file.write("time,temp,humidity,pression\n")
 
-        while not self.stop_events[node_id].is_set():  # Vérification du drapeau d'arrêt
-            telemetry_env = API_meshtastic.get_temp_humidity_pression(node_id)
+        while not self.stop_events[node_id].is_set():
+            try: telemetry = API_meshtastic.get_temp_humidity_pression(node_id)
+            except: pass
 
-            if telemetry_env:
-                temp = telemetry_env.get('temp')
-                humidity = telemetry_env.get('humidity')
-                pression = telemetry_env.get('pression')
+            if telemetry:
+                with open(file_path, "a") as file:
+                    file.write(f"{telemetry[0]},{telemetry[1]},{telemetry[2]},{telemetry[3]}\n")
+            else:
+                print(f"Données invalides reçues pour {node_id}: {telemetry}")
 
-                # Vérification que toutes les valeurs sont valides
-                if None not in [temp, humidity, pression]:
-                    with open(file_path, "a") as file:
-                        file.write(f"{temp},{humidity},{pression}\n")
-                else:
-                    print(f"Données invalides reçues pour {node_id}: {telemetry_env}")
-
-            self.stop_events[node_id].wait(1)  # Attente 1 seconde ou arrêt immédiat
+            self.stop_events[node_id].wait(1)
 
         print(f"Enregistrement terminé pour le nœud {node_id}.")
 
     def save(self, node_id):
         if node_id in self.threads and self.threads[node_id].is_alive():
             print(f"Arrêt de l'enregistrement pour le nœud {node_id}...")
-            self.stop_events[node_id].set()  # Déclenchement du drapeau d'arrêt
+            self.stop_events[node_id].set()
 
-            self.threads[node_id].join()  # Attente de l'arrêt du thread
-            del self.threads[node_id]  # Suppression du thread terminé
-            del self.stop_events[node_id]  # Suppression du drapeau d'arrêt
+            self.threads[node_id].join()
+            del self.threads[node_id]
+            del self.stop_events[node_id]
             print(f"Enregistrement pour {node_id} arrêté avec succès.")
         else:
             print(f"Aucun enregistrement en cours pour le nœud {node_id}.")
@@ -107,6 +101,8 @@ class App(customtkinter.CTk):
         self.geometry(f"{App.WIDTH}x{App.HEIGHT}")
         self.minsize(App.WIDTH, App.HEIGHT)
         self.cansat = {}
+
+        self.data_recorder = DataRecorder()
 
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
 
@@ -198,26 +194,27 @@ class App(customtkinter.CTk):
         """Affiche les informations du CanSat sélectionné"""
         for node_id, data in self.cansat.items():
             if data['longName'] == item:
-                telemetry_env = API_meshtastic.get_temp_humidity_pression(node_id)
+                telemetry = API_meshtastic.get_temp_humidity_pression(node_id)
                 info_text = f"Nom: {data['longName']}\n"
                 info_text += f"Abréviation: {data['shortName']}\n"
                 info_text += f"Latitude: {data['latitude']}\n"
                 info_text += f"Longitude: {data['longitude']}\n"
                 info_text += f"Altitude: {data['altitude']}m"
                 info_text += "\n\nTélémétrie environnementale:"
-                info_text += f"\nTempérature: {telemetry_env['temp']}°C\n"
-                info_text += f"Hygrométrie: {telemetry_env['humidity']}%\n"
-                info_text += f"Pression: {telemetry_env['pression']}hPa"
+                info_text += f"\nTempérature: {telemetry[1]}°C\n"
+                info_text += f"Hygrométrie: {telemetry[2]}%\n"
+                info_text += f"Pression: {telemetry[3]}hPa"
+                info_text += f"\n\nLatence : {telemetry[0] - time()}s"
                 
                 self.cansat_info_label.configure(text=info_text)
 
                 start_recording = customtkinter.CTkButton(self.frame_left, text="Start Recording", width=100, height=24)
                 start_recording.grid(row=4, column=0, pady=(10, 0), padx=5)
-                start_recording.configure(command=lambda: DataRecorder().record(node_id))
+                start_recording.configure(command=lambda: self.data_recorder.record(node_id))
 
                 stop_recording = customtkinter.CTkButton(self.frame_left, text="Stop Recording", width=100, height=24)
                 stop_recording.grid(row=5, column=0, pady=(10, 0), padx=5)
-                stop_recording.configure(command=lambda: DataRecorder().save(node_id))
+                stop_recording.configure(command=lambda: self.data_recorder.save(node_id))
 
                 # Ajouter un marqueur sur la carte si les coordonnées sont valides
                 if isinstance(data['latitude'], float) and isinstance(data['longitude'], float):
